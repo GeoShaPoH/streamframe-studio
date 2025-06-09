@@ -1,10 +1,10 @@
-import React, { useEffect } from 'react';
-import CornerMarks from './CornerMarks';
-import Avatar from './Avatar';
-import GalaxyAnimation from './GalaxyAnimation';
-import PlayerName from './PlayerName';
-import LiveIndicator from './LiveIndicator';
-import { ThemeType } from '../App';
+import React, { useEffect } from "react";
+import CornerMarks from "./CornerMarks";
+import Avatar from "./Avatar";
+import GalaxyAnimation from "./GalaxyAnimation";
+import PlayerName from "./PlayerName";
+import LiveIndicator from "./LiveIndicator";
+import { ThemeType } from "../App";
 
 interface CameraFrameProps {
   theme: ThemeType;
@@ -27,13 +27,16 @@ const CameraFrame: React.FC<CameraFrameProps> = ({
   showAvatar,
   avatarImage,
   showAnimation,
-  scale = 1
+  scale = 1,
 }) => {
   // Importar fuentes de Google Fonts
   useEffect(() => {
-    const link = document.createElement('link');
-    link.href = `https://fonts.googleapis.com/css2?family=${fontFamily.replace(' ', '+')}:wght@400;700&display=swap`;
-    link.rel = 'stylesheet';
+    const link = document.createElement("link");
+    link.href = `https://fonts.googleapis.com/css2?family=${fontFamily.replace(
+      " ",
+      "+"
+    )}:wght@400;700&display=swap`;
+    link.rel = "stylesheet";
     document.head.appendChild(link);
   }, [fontFamily]);
 
@@ -43,7 +46,7 @@ const CameraFrame: React.FC<CameraFrameProps> = ({
   const glowSize = 30 * scale;
 
   return (
-    <div 
+    <div
       className="absolute pointer-events-none"
       style={{
         inset: `${scaledPadding}px`,
@@ -51,7 +54,7 @@ const CameraFrame: React.FC<CameraFrameProps> = ({
     >
       <div className="relative w-full h-full">
         {/* Borde exterior con efecto glow */}
-        <div 
+        <div
           className="absolute inset-0"
           style={{
             borderRadius: `${24 * scale}px`,
@@ -60,26 +63,26 @@ const CameraFrame: React.FC<CameraFrameProps> = ({
             opacity: 0.8,
           }}
         />
-        
+
         {/* Marco principal */}
-        <div 
-          className="relative w-full h-full overflow-hidden"
+        <div
+          className="relative w-full h-full overflow-hidden animated-border"
           style={{
-            background: 'transparent',
             border: `${borderWidth}px solid ${theme.primary}`,
             borderRadius: `${24 * scale}px`,
-            boxShadow: `0 0 ${glowSize}px ${theme.glow}, inset 0 0 ${glowSize * 0.67}px ${theme.glow}`,
+            boxShadow: `0 0 ${glowSize}px ${theme.glow}, inset 0 0 ${
+              glowSize * 0.67
+            }px ${theme.glow}`,
+            background: "transparent",
           }}
         >
           <CornerMarks theme={theme} scale={scale} />
-          
+
           {showAvatar && (
             <Avatar theme={theme} avatarImage={avatarImage} scale={scale} />
           )}
 
-          {showAnimation && (
-            <GalaxyAnimation theme={theme} scale={scale} />
-          )}
+          {showAnimation && <GalaxyAnimation theme={theme} scale={scale} />}
 
           <PlayerName
             theme={theme}
