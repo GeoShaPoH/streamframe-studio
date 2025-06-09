@@ -1,4 +1,5 @@
 import React, { useEffect } from "react";
+import Frame from "./Frame";
 import CornerMarks from "./CornerMarks";
 import Avatar from "./Avatar";
 import GalaxyAnimation from "./GalaxyAnimation";
@@ -40,63 +41,27 @@ const CameraFrame: React.FC<CameraFrameProps> = ({
     document.head.appendChild(link);
   }, [fontFamily]);
 
-  // Sistema de escalado
-  const scaledPadding = 8 * scale;
-  const borderWidth = 12 * scale;
-  const glowSize = 30 * scale;
-
   return (
-    <div
-      className="absolute pointer-events-none"
-      style={{
-        inset: `${scaledPadding}px`,
-      }}
-    >
-      <div className="relative w-full h-full">
-        {/* Borde exterior con efecto glow */}
-        <div
-          className="absolute inset-0"
-          style={{
-            borderRadius: `${24 * scale}px`,
-            padding: `${2 * scale}px`,
-            filter: `blur(${4 * scale}px)`,
-            opacity: 0.8,
-          }}
-        />
+    <Frame theme={theme} scale={scale}>
+      <CornerMarks theme={theme} scale={scale} />
 
-        {/* Marco principal */}
-        <div
-          className="relative w-full h-full overflow-hidden animated-border"
-          style={{
-            border: `${borderWidth}px solid ${theme.primary}`,
-            borderRadius: `${24 * scale}px`,
-            boxShadow: `0 0 ${glowSize}px ${theme.glow}, inset 0 0 ${
-              glowSize * 0.67
-            }px ${theme.glow}`,
-            background: "transparent",
-          }}
-        >
-          <CornerMarks theme={theme} scale={scale} />
+      {showAvatar && (
+        <Avatar theme={theme} avatarImage={avatarImage} scale={scale} />
+      )}
 
-          {showAvatar && (
-            <Avatar theme={theme} avatarImage={avatarImage} scale={scale} />
-          )}
+      {showAnimation && <GalaxyAnimation theme={theme} scale={scale} />}
 
-          {showAnimation && <GalaxyAnimation theme={theme} scale={scale} />}
+      <PlayerName
+        theme={theme}
+        playerName={playerName}
+        namePosition={namePosition}
+        fontSize={fontSize}
+        fontFamily={fontFamily}
+        scale={scale}
+      />
 
-          <PlayerName
-            theme={theme}
-            playerName={playerName}
-            namePosition={namePosition}
-            fontSize={fontSize}
-            fontFamily={fontFamily}
-            scale={scale}
-          />
-
-          <LiveIndicator theme={theme} scale={scale} />
-        </div>
-      </div>
-    </div>
+      <LiveIndicator theme={theme} scale={scale} />
+    </Frame>
   );
 };
 
