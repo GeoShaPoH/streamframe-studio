@@ -15,7 +15,7 @@ interface CameraFrameProps {
   showAvatar: boolean;
   avatarImage: string | ArrayBuffer | null;
   showAnimation: boolean;
-  scale?: number; // Nuevo prop para escalar todo el overlay
+  scale?: number;
 }
 
 const CameraFrame: React.FC<CameraFrameProps> = ({
