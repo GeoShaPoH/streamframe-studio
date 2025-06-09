@@ -1,4 +1,3 @@
-// src/components/UrlInfo.tsx
 import React, { useState } from "react";
 import { Copy, Check, Info, X } from "lucide-react";
 

@@ -26,7 +26,7 @@ interface SettingsModalProps {
   showAvatar: boolean;
   setShowAvatar: (show: boolean) => void;
   avatarImage: string | ArrayBuffer | null;
-  setAvatarImage: (image: string | ArrayBuffer | null) => void;
+  setAvatarImage: (image: string | ArrayBuffer | null | File) => void;
   showAnimation: boolean;
   setShowAnimation: (show: boolean) => void;
   globalScale: number;
@@ -64,11 +64,20 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setAvatarImage(reader.result);
-      };
-      reader.readAsDataURL(file);
+      // Validar tamaño del archivo (5MB máximo)
+      if (file.size > 5 * 1024 * 1024) {
+        alert("El archivo es demasiado grande. Máximo 5MB permitido.");
+        return;
+      }
+
+      // Validar tipo de archivo
+      if (!file.type.startsWith("image/")) {
+        alert("Solo se permiten archivos de imagen.");
+        return;
+      }
+
+      // Pasar el archivo directamente al setter, que manejará la subida
+      setAvatarImage(file);
     }
   };
 
@@ -127,6 +136,13 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
           showAnimation={showAnimation}
           setShowAnimation={setShowAnimation}
         />
+
+        <div className="mt-6 pt-4 border-t border-gray-700">
+          <div className="text-xs text-gray-500 text-center">
+            Los cambios se guardan automáticamente y se sincronizan en tiempo
+            real
+          </div>
+        </div>
       </div>
     </div>
   );

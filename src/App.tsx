@@ -1,11 +1,16 @@
 import { useState, useEffect, useCallback } from "react";
-import { Settings, Copy, Check, Eye, EyeOff } from "lucide-react";
+import { Settings, Copy, Check, Eye, EyeOff, Save } from "lucide-react";
 import io, { Socket } from "socket.io-client";
 import CameraFrame from "./components/CameraFrame";
 import SettingsModal from "./components/SettingsModal";
+import DatabaseStats from "./components/DatabaseStats";
 import { themes } from "./utils/themes";
 import { sizeConfig } from "./utils/sizeConfig";
 import UrlInfo from "./utils/UrlInfo";
+import {
+  useConfigPersistence,
+  ConfigState,
+} from "./hooks/useConfigPersistence";
 
 export interface ThemeType {
   primary: string;
@@ -16,39 +21,35 @@ export interface ThemeType {
 
 export type ThemeName = "osu" | "apex" | "irl" | "custom";
 
-interface ConfigState {
-  theme: ThemeName;
-  customColor: string;
-  playerName: string;
-  namePosition: string;
-  fontSize: string;
-  fontFamily: string;
-  showAvatar: boolean;
-  avatarImage: string | ArrayBuffer | null;
-  showAnimation: boolean;
-  globalScale: number;
-}
-
 const App = () => {
   const [socket, setSocket] = useState<Socket | null>(null);
   const [isConnected, setIsConnected] = useState(false);
   const [connectedClients, setConnectedClients] = useState(0);
   const [showSettings, setShowSettings] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [lastSyncTime, setLastSyncTime] = useState<Date | null>(null);
 
-  // Estados de configuración
-  const [currentTheme, setCurrentTheme] = useState<ThemeName>("apex");
-  const [customColor, setCustomColor] = useState("#ff66aa");
-  const [playerName, setPlayerName] = useState("GEO");
-  const [namePosition, setNamePosition] = useState("bottom-right");
-  const [fontSize, setFontSize] = useState("32");
-  const [fontFamily, setFontFamily] = useState("Russo One");
-  const [showAvatar, setShowAvatar] = useState(true);
-  const [avatarImage, setAvatarImage] = useState<string | ArrayBuffer | null>(
-    "/images/klee.jpg"
-  );
-  const [showAnimation, setShowAnimation] = useState(true);
-  const [globalScale, setGlobalScale] = useState(sizeConfig.globalScale);
+  // Hook de persistencia
+  const {
+    config,
+    isLoading,
+    error: persistenceError,
+    isSaving,
+    updateConfig,
+    uploadAvatar,
+  } = useConfigPersistence();
+
+  // Estados individuales derivados de la configuración
+  const currentTheme = (config?.theme as ThemeName) || "apex";
+  const customColor = config?.customColor || "#ff66aa";
+  const playerName = config?.playerName || "GEO";
+  const namePosition = config?.namePosition || "bottom-right";
+  const fontSize = config?.fontSize || "32";
+  const fontFamily = config?.fontFamily || "Russo One";
+  const showAvatar = config?.showAvatar ?? true;
+  const avatarImage = config?.avatarImage || "/images/klee.jpg";
+  const showAnimation = config?.showAnimation ?? true;
+  const globalScale = config?.globalScale || sizeConfig.globalScale;
 
   // Detectar modo viewer desde URL
   const urlParams = new URLSearchParams(window.location.search);
@@ -59,6 +60,8 @@ const App = () => {
 
   // Conectar WebSocket al montar el componente
   useEffect(() => {
+    if (!config) return; // Esperar a que se cargue la configuración
+
     const socketIo = io("http://localhost:4000", {
       reconnection: true,
       reconnectionDelay: 1000,
@@ -68,7 +71,7 @@ const App = () => {
     socketIo.on("connect", () => {
       console.log("Conectado al servidor WebSocket");
       setIsConnected(true);
-      socketIo.emit("requestConfig");
+      setLastSyncTime(new Date());
     });
 
     socketIo.on("disconnect", () => {
@@ -76,22 +79,15 @@ const App = () => {
       setIsConnected(false);
     });
 
-    // Recibir configuración del servidor
-    socketIo.on("config", (config: Partial<ConfigState>) => {
-      console.log("Configuración recibida:", config);
+    // Recibir configuración del servidor via WebSocket
+    socketIo.on("config", (serverConfig: Partial<ConfigState>) => {
+      console.log("Configuración recibida via WebSocket:", serverConfig);
 
-      if (config.theme !== undefined) setCurrentTheme(config.theme);
-      if (config.customColor !== undefined) setCustomColor(config.customColor);
-      if (config.playerName !== undefined) setPlayerName(config.playerName);
-      if (config.namePosition !== undefined)
-        setNamePosition(config.namePosition);
-      if (config.fontSize !== undefined) setFontSize(config.fontSize);
-      if (config.fontFamily !== undefined) setFontFamily(config.fontFamily);
-      if (config.showAvatar !== undefined) setShowAvatar(config.showAvatar);
-      if (config.avatarImage !== undefined) setAvatarImage(config.avatarImage);
-      if (config.showAnimation !== undefined)
-        setShowAnimation(config.showAnimation);
-      if (config.globalScale !== undefined) setGlobalScale(config.globalScale);
+      // Solo actualizar si no estamos en modo viewer para evitar conflictos
+      if (isViewerMode && serverConfig) {
+        updateConfig(serverConfig);
+        setLastSyncTime(new Date());
+      }
     });
 
     // Recibir contador de clientes
@@ -105,51 +101,108 @@ const App = () => {
     return () => {
       socketIo.disconnect();
     };
-  }, []);
+  }, [config, isViewerMode, updateConfig]);
 
-  // Función para emitir cambios de configuración
+  // Función para emitir cambios de configuración via WebSocket
   const emitConfigChange = useCallback(
     (configUpdate: Partial<ConfigState>) => {
-      if (socket && isConnected) {
+      if (socket && isConnected && !isViewerMode) {
         socket.emit("updateConfig", configUpdate);
+        setLastSyncTime(new Date());
       }
     },
-    [socket, isConnected]
+    [socket, isConnected, isViewerMode]
   );
 
-  // Efecto para detectar cambios y emitirlos
-  useEffect(() => {
-    if (socket && isConnected && !isViewerMode) {
-      const config: ConfigState = {
-        theme: currentTheme,
-        customColor,
-        playerName,
-        namePosition,
-        fontSize,
-        fontFamily,
-        showAvatar,
-        avatarImage,
-        showAnimation,
-        globalScale,
-      };
-      emitConfigChange(config);
-    }
-  }, [
-    currentTheme,
-    customColor,
-    playerName,
-    namePosition,
-    fontSize,
-    fontFamily,
-    showAvatar,
-    avatarImage,
-    showAnimation,
-    globalScale,
-    socket,
-    isConnected,
-    emitConfigChange,
-    isViewerMode,
-  ]);
+  // Funciones de actualización de configuración
+  const setCurrentTheme = useCallback(
+    (theme: ThemeName) => {
+      updateConfig({ theme });
+      emitConfigChange({ theme });
+    },
+    [updateConfig, emitConfigChange]
+  );
+
+  const setCustomColor = useCallback(
+    (color: string) => {
+      updateConfig({ customColor: color });
+      emitConfigChange({ customColor: color });
+    },
+    [updateConfig, emitConfigChange]
+  );
+
+  const setPlayerName = useCallback(
+    (name: string) => {
+      updateConfig({ playerName: name });
+      emitConfigChange({ playerName: name });
+    },
+    [updateConfig, emitConfigChange]
+  );
+
+  const setNamePosition = useCallback(
+    (position: string) => {
+      updateConfig({ namePosition: position });
+      emitConfigChange({ namePosition: position });
+    },
+    [updateConfig, emitConfigChange]
+  );
+
+  const setFontSize = useCallback(
+    (size: string) => {
+      updateConfig({ fontSize: size });
+      emitConfigChange({ fontSize: size });
+    },
+    [updateConfig, emitConfigChange]
+  );
+
+  const setFontFamily = useCallback(
+    (font: string) => {
+      updateConfig({ fontFamily: font });
+      emitConfigChange({ fontFamily: font });
+    },
+    [updateConfig, emitConfigChange]
+  );
+
+  const setShowAvatar = useCallback(
+    (show: boolean) => {
+      updateConfig({ showAvatar: show });
+      emitConfigChange({ showAvatar: show });
+    },
+    [updateConfig, emitConfigChange]
+  );
+
+  const setAvatarImage = useCallback(
+    async (image: string | ArrayBuffer | null | File) => {
+      if (image instanceof File) {
+        // Si es un archivo, subirlo al servidor
+        const avatarUrl = await uploadAvatar(image);
+        if (avatarUrl) {
+          updateConfig({ avatarImage: avatarUrl });
+          emitConfigChange({ avatarImage: avatarUrl });
+        }
+      } else {
+        updateConfig({ avatarImage: image });
+        emitConfigChange({ avatarImage: image });
+      }
+    },
+    [updateConfig, emitConfigChange, uploadAvatar]
+  );
+
+  const setShowAnimation = useCallback(
+    (show: boolean) => {
+      updateConfig({ showAnimation: show });
+      emitConfigChange({ showAnimation: show });
+    },
+    [updateConfig, emitConfigChange]
+  );
+
+  const setGlobalScale = useCallback(
+    (scale: number) => {
+      updateConfig({ globalScale: scale });
+      emitConfigChange({ globalScale: scale });
+    },
+    [updateConfig, emitConfigChange]
+  );
 
   // Función para copiar URL del viewer
   const copyViewerUrl = () => {
@@ -171,6 +224,15 @@ const App = () => {
         }
       : themes[currentTheme];
 
+  // Mostrar loading mientras se carga la configuración
+  if (isLoading || !config) {
+    return (
+      <div className="w-screen h-screen bg-transparent flex items-center justify-center">
+        <div className="text-white text-lg">Cargando configuración...</div>
+      </div>
+    );
+  }
+
   return (
     <div className="relative w-screen h-screen bg-transparent overflow-hidden">
       <CameraFrame
@@ -188,17 +250,23 @@ const App = () => {
       {/* Controles superiores - Solo visibles si no está en modo viewer */}
       {!hideControls && (
         <div className="absolute top-0 left-0 right-0 flex justify-between items-start p-4 z-50">
-          {/* Botón de configuración */}
-          <button
-            onClick={() => setShowSettings(true)}
-            className="p-2 rounded-lg pointer-events-auto transition-all hover:scale-110"
-            style={{
-              background: `${theme.primary}20`,
-              border: `1px solid ${theme.primary}40`,
-            }}
-          >
-            <Settings className="w-6 h-6" style={{ color: theme.primary }} />
-          </button>
+          {/* Controles de la izquierda */}
+          <div className="flex gap-2">
+            {/* Botón de configuración */}
+            <button
+              onClick={() => setShowSettings(true)}
+              className="p-2 rounded-lg pointer-events-auto transition-all hover:scale-110"
+              style={{
+                background: `${theme.primary}20`,
+                border: `1px solid ${theme.primary}40`,
+              }}
+            >
+              <Settings className="w-6 h-6" style={{ color: theme.primary }} />
+            </button>
+
+            {/* Estadísticas de base de datos */}
+            <DatabaseStats theme={theme} />
+          </div>
 
           {/* Controles de la derecha */}
           <div className="flex gap-2 items-start">
@@ -225,6 +293,21 @@ const App = () => {
                 </>
               )}
             </button>
+
+            {/* Indicador de guardado */}
+            {isSaving && (
+              <div
+                className="flex items-center gap-2 px-3 py-2 rounded-lg pointer-events-none"
+                style={{
+                  background: "#3b82f620",
+                  border: "1px solid #3b82f640",
+                  color: "#3b82f6",
+                }}
+              >
+                <Save className="w-4 h-4 animate-pulse" />
+                <span className="text-sm">Guardando...</span>
+              </div>
+            )}
 
             {/* Indicador de modo */}
             <div
@@ -254,19 +337,50 @@ const App = () => {
         </div>
       )}
 
-      {/* Indicador de conexión - Solo visible si no está oculto */}
+      {/* Notificaciones de error */}
+      {!hideControls && persistenceError && (
+        <div className="absolute top-20 right-4 p-3 rounded-lg z-50 pointer-events-none max-w-sm">
+          <div
+            className="text-sm"
+            style={{
+              background: "#ef444420",
+              border: "1px solid #ef444440",
+              color: "#ef4444",
+            }}
+          >
+            ⚠️ {persistenceError}
+          </div>
+        </div>
+      )}
+
+      {/* Indicador de conexión y última sincronización */}
       {!hideIndicator && (
-        <div
-          className="absolute z-50 text-xs px-2 py-1 rounded pointer-events-none"
-          style={{
-            bottom: `${4 * globalScale}px`,
-            right: `${4 * globalScale}px`,
-            background: isConnected ? "#00ff0020" : "#ff000020",
-            color: isConnected ? "#00ff00" : "#ff0000",
-            border: `1px solid ${isConnected ? "#00ff0040" : "#ff000040"}`,
-          }}
-        >
-          {isConnected ? `Conectado (${connectedClients})` : "Desconectado"}
+        <div className="absolute bottom-0 right-0 p-4 z-50 space-y-2">
+          {/* Estado de conexión */}
+          <div
+            className="text-xs px-2 py-1 rounded pointer-events-none"
+            style={{
+              background: isConnected ? "#00ff0020" : "#ff000020",
+              color: isConnected ? "#00ff00" : "#ff0000",
+              border: `1px solid ${isConnected ? "#00ff0040" : "#ff000040"}`,
+            }}
+          >
+            {isConnected ? `Conectado (${connectedClients})` : "Desconectado"}
+          </div>
+
+          {/* Última sincronización */}
+          {lastSyncTime && (
+            <div
+              className="text-xs px-2 py-1 rounded pointer-events-none"
+              style={{
+                background: "#6b728020",
+                color: "#6b7280",
+                border: "1px solid #6b728040",
+              }}
+            >
+              Sync: {lastSyncTime.toLocaleTimeString()}
+            </div>
+          )}
         </div>
       )}
 

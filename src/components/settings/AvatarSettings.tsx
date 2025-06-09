@@ -1,5 +1,5 @@
-import React from 'react';
-import { Image, Upload } from 'lucide-react';
+import React from "react";
+import { Image, Upload } from "lucide-react";
 
 interface AvatarSettingsProps {
   showAvatar: boolean;
@@ -12,7 +12,7 @@ const AvatarSettings: React.FC<AvatarSettingsProps> = ({
   showAvatar,
   setShowAvatar,
   fileInputRef,
-  handleImageUpload
+  handleImageUpload,
 }) => {
   return (
     <div className="mb-6">
@@ -20,7 +20,7 @@ const AvatarSettings: React.FC<AvatarSettingsProps> = ({
         <Image className="inline w-4 h-4 mr-1" />
         Avatar de personaje
       </label>
-      <div className="flex items-center space-x-2">
+      <div className="flex items-center space-x-2 mb-2">
         <button
           onClick={() => fileInputRef.current?.click()}
           className="px-3 py-2 bg-gray-800 text-gray-300 rounded-lg hover:bg-gray-700 transition-colors flex items-center"
@@ -37,6 +37,10 @@ const AvatarSettings: React.FC<AvatarSettingsProps> = ({
           />
           Mostrar avatar
         </label>
+      </div>
+      <div className="text-xs text-gray-500">
+        La imagen se guardará en el servidor para sincronización entre
+        dispositivos
       </div>
       <input
         ref={fileInputRef}
