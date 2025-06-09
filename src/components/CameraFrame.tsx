@@ -42,7 +42,7 @@ const CameraFrame: React.FC<CameraFrameProps> = ({
 
   // Sistema de escalado
   const scaledPadding = 8 * scale;
-  const borderWidth = 3 * scale;
+  const borderWidth = 12 * scale;
   const glowSize = 30 * scale;
 
   return (
