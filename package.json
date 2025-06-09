@@ -1,6 +1,7 @@
 {
-  "name": "cam-frame",
-  "version": "0.1.0",
+  "name": "streamframe-studio",
+  "version": "1.0.0",
+  "description": "Real-time customizable webcam frame overlay for OBS with WebSocket sync",
   "private": true,
   "dependencies": {
     "@testing-library/dom": "^10.4.0",
@@ -11,17 +12,26 @@
     "@types/node": "^16.18.126",
     "@types/react": "^19.1.6",
     "@types/react-dom": "^19.1.6",
+    "cors": "^2.8.5",
+    "express": "^5.1.0",
+    "framer-motion": "^12.16.0",
+    "lucide-react": "^0.513.0",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
     "react-scripts": "5.0.1",
+    "socket.io": "^4.8.1",
+    "socket.io-client": "^4.8.1",
     "typescript": "^4.9.5",
     "web-vitals": "^2.1.4"
   },
   "scripts": {
-    "start": "react-scripts start",
+    "start": "concurrently \"npm run server\" \"npm run client\"",
+    "client": "react-scripts start",
+    "server": "node server.js",
     "build": "react-scripts build",
     "test": "react-scripts test",
-    "eject": "react-scripts eject"
+    "eject": "react-scripts eject",
+    "dev": "npm start"
   },
   "eslintConfig": {
     "extends": [
@@ -40,5 +50,11 @@
       "last 1 firefox version",
       "last 1 safari version"
     ]
+  },
+  "devDependencies": {
+    "autoprefixer": "^10.4.21",
+    "concurrently": "^8.2.2",
+    "postcss": "^8.5.4",
+    "tailwindcss": "^3.3.5"
   }
 }
